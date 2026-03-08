@@ -1,20 +1,14 @@
 import { NextResponse } from 'next/server';
 import { GUESTS } from '@/lib/constants';
 import { calculateScore, parseScorecardToResults } from '@/lib/scoring';
-import fs from 'fs';
-import path from 'path';
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'predictions.json');
+// Access the global variable defined in predictions/route.ts
+const globalForPredictions = globalThis as unknown as {
+    matchPredictions?: Record<string, { answers: Record<number, string>; submittedAt: string }>;
+};
 
 function readPredictions() {
-    if (!fs.existsSync(DATA_FILE)) return {};
-    try {
-        const content = fs.readFileSync(DATA_FILE, 'utf-8');
-        return JSON.parse(content);
-    } catch (err) {
-        console.error('Error reading predictions for leaderboard:', err);
-        return {};
-    }
+    return globalForPredictions.matchPredictions || {};
 }
 
 async function fetchScorecard() {

@@ -1,46 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Guest } from '@/lib/types';
-import fs from 'fs';
-import path from 'path';
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'predictions.json');
+// Use a global variable to persist predictions in development and across API hot-reloads
+const globalForPredictions = globalThis as unknown as {
+    matchPredictions: Record<string, { answers: Record<number, string>; submittedAt: string }>;
+};
 
-// Ensure data directory and file exist
-function ensureDataFile() {
-    const dir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-    if (!fs.existsSync(DATA_FILE)) {
-        fs.writeFileSync(DATA_FILE, JSON.stringify({}), 'utf-8');
-    }
-}
-
-function readData(): Record<string, { answers: Record<number, string>; submittedAt: string }> {
-    ensureDataFile();
-    try {
-        const content = fs.readFileSync(DATA_FILE, 'utf-8');
-        return JSON.parse(content);
-    } catch (err) {
-        console.error('Error reading predictions.json:', err);
-        // Fallback if file is locked or empty
-        return {};
-    }
-}
-
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
-async function writeData(data: Record<string, any>, retries = 3) {
-    ensureDataFile();
-    for (let i = 0; i < retries; i++) {
-        try {
-            fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
-            return;
-        } catch (err) {
-            if (i === retries - 1) throw err;
-            await delay(100);
-        }
-    }
+if (!globalForPredictions.matchPredictions) {
+    globalForPredictions.matchPredictions = {};
 }
 
 export async function POST(req: NextRequest) {
@@ -52,12 +19,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing guestName or answers' }, { status: 400 });
         }
 
-        const data = readData();
-        data[guestName] = {
+        globalForPredictions.matchPredictions[guestName] = {
             answers,
             submittedAt: new Date().toISOString(),
         };
-        await writeData(data);
 
         return NextResponse.json({ success: true, message: 'Predictions saved!', totalPoints: null });
     } catch (err) {
@@ -69,7 +34,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const name = searchParams.get('name');
-    const data = readData();
+    const data = globalForPredictions.matchPredictions;
     if (name) {
         return NextResponse.json({ predictions: data[name] || null });
     }
