@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 import { Guest } from '@/lib/types';
+
+const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 // POST - save predictions
 export async function POST(req: NextRequest) {
@@ -12,7 +17,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing guestName or answers' }, { status: 400 });
         }
 
-        await kv.hset('predictions', {
+        await redis.hset('predictions', {
             [guestName]: JSON.stringify({ answers, submittedAt: new Date().toISOString() }),
         });
 
@@ -28,7 +33,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const name = searchParams.get('name');
 
-    const all = await kv.hgetall('predictions') as Record<string, string> | null;
+    const all = await redis.hgetall('predictions') as Record<string, string> | null;
     const parsed: Record<string, any> = {};
     for (const [key, val] of Object.entries(all || {})) {
         try { parsed[key] = typeof val === 'string' ? JSON.parse(val) : val; } catch { parsed[key] = val; }

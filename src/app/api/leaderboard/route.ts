@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 import { GUESTS } from '@/lib/constants';
 import { calculateScore, parseScorecardToResults } from '@/lib/scoring';
 
+const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
 async function readPredictions() {
-    const all = await kv.hgetall('predictions') as Record<string, string> | null;
+    const all = await redis.hgetall('predictions') as Record<string, string> | null;
     const parsed: Record<string, any> = {};
     for (const [key, val] of Object.entries(all || {})) {
         try { parsed[key] = typeof val === 'string' ? JSON.parse(val) : val; } catch { parsed[key] = val; }
@@ -35,23 +40,18 @@ async function fetchScorecard() {
 export async function GET() {
     try {
         const predictions = await readPredictions();
-
         const scorecard = await fetchScorecard();
         const actualResults = scorecard ? parseScorecardToResults(scorecard) : null;
 
         const leaderboard = GUESTS.map((guest) => {
             const guestPredictions = predictions[guest];
-            if (!guestPredictions) {
-                return { name: guest, totalPoints: 0, answeredCount: 0 };
-            }
+            if (!guestPredictions) return { name: guest, totalPoints: 0, answeredCount: 0 };
 
             const answeredCount = Object.keys(guestPredictions.answers || {}).length;
-
             if (actualResults) {
                 const { points } = calculateScore(guestPredictions.answers, actualResults);
                 return { name: guest, totalPoints: points, answeredCount };
             }
-
             return { name: guest, totalPoints: 0, answeredCount };
         });
 

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
+
+const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 // GET - return list of currently taken names
 export async function GET() {
-    const sessions = await kv.hgetall('active_sessions') as Record<string, string> | null;
+    const sessions = await redis.hgetall('active_sessions') as Record<string, string> | null;
     return NextResponse.json({ takenNames: Object.keys(sessions || {}) });
 }
 
@@ -13,13 +18,12 @@ export async function POST(req: NextRequest) {
         const { name } = await req.json();
         if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 
-        // Atomic check-and-set: only set if field doesn't exist
-        const existing = await kv.hget('active_sessions', name);
+        const existing = await redis.hget('active_sessions', name);
         if (existing) {
             return NextResponse.json({ error: 'Name already taken', taken: true }, { status: 409 });
         }
 
-        await kv.hset('active_sessions', { [name]: new Date().toISOString() });
+        await redis.hset('active_sessions', { [name]: new Date().toISOString() });
         return NextResponse.json({ success: true });
     } catch {
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -32,7 +36,7 @@ export async function DELETE(req: NextRequest) {
         const { name } = await req.json();
         if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 
-        await kv.hdel('active_sessions', name);
+        await redis.hdel('active_sessions', name);
         return NextResponse.json({ success: true });
     } catch {
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
