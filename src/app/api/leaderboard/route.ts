@@ -18,7 +18,7 @@ async function fetchScorecard() {
     if (!matchId || !apiKey) return null;
 
     const res = await fetch(
-        `https://crickbuzz-official-apis.p.rapidapi.com/matches/get-scorecard?matchId=${matchId}`,
+        `https://crickbuzz-official-apis.p.rapidapi.com/matches`,
         {
             method: 'GET',
             headers: {
@@ -30,7 +30,19 @@ async function fetchScorecard() {
     );
 
     if (!res.ok) return null;
-    return res.json();
+    const data = await res.json();
+
+    // Find the specific match by ID
+    const typeMatches = data?.typeMatches || [];
+    for (const typeMatch of typeMatches) {
+        const seriesMatches = typeMatch?.seriesMatches || [];
+        for (const seriesMatch of seriesMatches) {
+            const matches = seriesMatch?.seriesAdWrapper?.matches || [];
+            const targetMatch = matches.find((m: any) => m?.matchInfo?.matchId === parseInt(matchId));
+            if (targetMatch) return targetMatch;
+        }
+    }
+    return null;
 }
 
 export async function GET() {

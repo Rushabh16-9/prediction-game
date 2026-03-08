@@ -159,19 +159,9 @@ export function parseScorecardToResults(scorecard: any): ActualResults {
 
     try {
         const matchInfo = scorecard?.matchInfo;
-        const scorecard1 = scorecard?.scoreCard?.[0]; // Innings 1
-        const scorecard2 = scorecard?.scoreCard?.[1]; // Innings 2
-
-        // Determine India's innings
-        let indiaInnings = scorecard1;
-        let nzInnings = scorecard2;
-
-        // Check which team is India based on team name
-        const team1Name = scorecard1?.batTeamDetails?.batTeamName || '';
-        if (!team1Name.toLowerCase().includes('india')) {
-            indiaInnings = scorecard2;
-            nzInnings = scorecard1;
-        }
+        const matchScore = scorecard?.matchScore;
+        const team1 = matchInfo?.team1 || {};
+        const team2 = matchInfo?.team2 || {};
 
         // Toss info
         const tossResults = matchInfo?.tossResults;
@@ -180,42 +170,59 @@ export function parseScorecardToResults(scorecard: any): ActualResults {
             results.captainChoice = tossResults.decision === 'bat' ? 'Bat' : 'Bowl';
         }
 
+        // Identify Teams
+        const team1IsIndia = (team1.teamName || team1.teamSName || '').toLowerCase().includes('ind');
+
+        // Find Innings
+        let indiaInnings = null;
+        let nzInnings = null;
+
+        if (matchScore) {
+            const indScoreObj = team1IsIndia ? matchScore.team1Score : matchScore.team2Score;
+            const nzScoreObj = team1IsIndia ? matchScore.team2Score : matchScore.team1Score;
+
+            if (indScoreObj) {
+                const keys = Object.keys(indScoreObj);
+                if (keys.length > 0) indiaInnings = indScoreObj[keys[keys.length - 1]]; // latest innings
+            }
+            if (nzScoreObj) {
+                const keys = Object.keys(nzScoreObj);
+                if (keys.length > 0) nzInnings = nzScoreObj[keys[keys.length - 1]];
+            }
+        }
+
         // India Batting stats
         if (indiaInnings) {
             const batDetails = indiaInnings.batTeamDetails;
-            results.indiaTotalRuns = indiaInnings.scoreDetails?.runs;
+            results.indiaTotalRuns = indiaInnings.runs || 0;
 
             let sixesCount = 0;
             let foursCount = 0;
             let maxSixes = 0;
             let maxSixesPlayer = '';
-            let powerplayWickets = 0;
-            let powerplayRuns = 0;
             let hasCentury = false;
             let hasFifty = false;
 
-            const batsmanData = batDetails?.batsmenData;
-            if (batsmanData) {
-                Object.values(batsmanData as Record<string, any>).forEach((b: any) => {
-                    const runs = b.runs || 0;
-                    const sixes = b.sixes || 0;
-                    const fours = b.fours || 0;
-                    sixesCount += sixes;
-                    foursCount += fours;
+            const batsmen = batDetails?.batsmen || [];
+            batsmen.forEach((b: any) => {
+                const runs = b.batRuns || 0;
+                const sixes = b.batSixes || 0;
+                const fours = b.batFours || 0;
+                sixesCount += sixes;
+                foursCount += fours;
 
-                    const name = b.batName?.toLowerCase() || '';
-                    if (name.includes('samson')) results.sanjuRuns = runs;
-                    if (name.includes('kishan')) results.ishanRuns = runs;
-                    if (name.includes('suryakumar') || name.includes('yadav')) results.skRuns = runs;
-                    if (name.includes('abhishek')) results.abhishekRuns = runs;
-                    if (name.includes('tilak')) results.tilakRuns = runs;
-                    if (name.includes('pandya') || name.includes('hardik')) results.hardikBatRuns = runs;
+                const name = b.batName?.toLowerCase() || '';
+                if (name.includes('samson')) results.sanjuRuns = runs;
+                if (name.includes('kishan')) results.ishanRuns = runs;
+                if (name.includes('suryakumar') || name.includes('yadav')) results.skRuns = runs;
+                if (name.includes('abhishek')) results.abhishekRuns = runs;
+                if (name.includes('tilak')) results.tilakRuns = runs;
+                if (name.includes('pandya') || name.includes('hardik')) results.hardikBatRuns = runs;
 
-                    if (sixes > maxSixes) { maxSixes = sixes; maxSixesPlayer = b.batName; }
-                    if (runs >= 100) hasCentury = true;
-                    if (runs >= 50) hasFifty = true;
-                });
-            }
+                if (sixes > maxSixes) { maxSixes = sixes; maxSixesPlayer = b.batName; }
+                if (runs >= 100) hasCentury = true;
+                if (runs >= 50) hasFifty = true;
+            });
 
             results.indiaSixes = sixesCount;
             results.indiaFours = foursCount;
@@ -223,50 +230,49 @@ export function parseScorecardToResults(scorecard: any): ActualResults {
             results.indiaCentury = hasCentury ? 'Yes' : 'No';
             results.indiaFifty = hasFifty ? 'Yes' : 'No';
 
-            // Powerplay data
+            // Powerplay data (if available in official format, usually under currentInnings.ppData)
             const powerplayData = indiaInnings.ppData?.pp_1;
             if (powerplayData) {
                 results.indiaPowerplayWickets = powerplayData.ppWkts ?? 0;
                 results.india50InPowerplay = (powerplayData.ppRuns ?? 0) > 50 ? 'Yes' : 'No';
             }
 
-            // Bowling stats for India bowled second (NZ batting)
-            const bowlDetails = indiaInnings.bowlTeamDetails?.bowlersData;
-            if (bowlDetails) {
-                let totalWides = 0;
-                Object.values(bowlDetails as Record<string, any>).forEach((b: any) => {
-                    const name = b.bowlName?.toLowerCase() || '';
-                    if (name.includes('bumrah')) {
-                        results.bumrahWickets = b.wickets;
-                        results.bumrahRuns = b.runs;
-                    }
-                    if (name.includes('arshdeep')) results.arshdeepWickets = b.wickets;
-                    if (name.includes('axar')) results.axarWickets = b.wickets;
-                    if (name.includes('varun') || name.includes('chakaravarthy')) results.varunWickets = b.wickets;
-                    if (name.includes('pandya') || name.includes('hardik')) results.hardikBowlWickets = b.wickets;
-                    totalWides += b.wides || 0;
-                });
-                results.indiaTotalWides = totalWides;
-            }
+            // Bowling stats for India bowled second (NZ batting => India bowling)
         }
 
-        // NZ Batting stats
+        // Get Bowling stats from NZ's batting innings
         if (nzInnings) {
-            results.nzTotalRuns = nzInnings.scoreDetails?.runs;
-            results.nzTotalWickets = nzInnings.scoreDetails?.wickets;
+            results.nzTotalRuns = nzInnings.runs || 0;
+            results.nzTotalWickets = nzInnings.wickets || 0;
+
             let nzHasFifty = false;
-            const nzBatsmanData = nzInnings.batTeamDetails?.batsmenData;
-            if (nzBatsmanData) {
-                Object.values(nzBatsmanData as Record<string, any>).forEach((b: any) => {
-                    if ((b.runs || 0) >= 50) nzHasFifty = true;
-                });
-            }
+            const nzBatsmen = nzInnings.batTeamDetails?.batsmen || [];
+            nzBatsmen.forEach((b: any) => {
+                if ((b.batRuns || 0) >= 50) nzHasFifty = true;
+            });
             results.nzFifty = nzHasFifty ? 'Yes' : 'No';
+
+            // India's bowling stats come from the bowlers list when NZ bats
+            const indBowlers = nzInnings.bowlTeamDetails?.bowlers || [];
+            let totalWides = 0;
+            indBowlers.forEach((b: any) => {
+                const name = b.bowlName?.toLowerCase() || '';
+                if (name.includes('bumrah')) {
+                    results.bumrahWickets = b.bowlWkts || 0;
+                    results.bumrahRuns = b.bowlRuns || 0;
+                }
+                if (name.includes('arshdeep')) results.arshdeepWickets = b.bowlWkts || 0;
+                if (name.includes('axar')) results.axarWickets = b.bowlWkts || 0;
+                if (name.includes('varun') || name.includes('chakaravarthy')) results.varunWickets = b.bowlWkts || 0;
+                if (name.includes('pandya') || name.includes('hardik')) results.hardikBowlWickets = b.bowlWkts || 0;
+                totalWides += b.bowlWides || 0;
+            });
+            results.indiaTotalWides = totalWides;
         }
 
         // Match result
-        const status = matchInfo?.matchDescription?.toLowerCase() || '';
-        results.indiaWin = status.includes('india') && (status.includes('won') || status.includes('win')) ? 'Yes' : 'No';
+        const status = matchInfo?.status || matchInfo?.matchDesc || '';
+        results.indiaWin = status.toLowerCase().includes('india') && (status.toLowerCase().includes('won') || status.toLowerCase().includes('win')) ? 'Yes' : 'No';
 
     } catch (e) {
         console.error('Error parsing scorecard:', e);
