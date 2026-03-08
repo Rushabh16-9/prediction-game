@@ -18,8 +18,14 @@ function ensureDataFile() {
 
 function readData(): Record<string, { answers: Record<number, string>; submittedAt: string }> {
     ensureDataFile();
-    const content = fs.readFileSync(DATA_FILE, 'utf-8');
-    return JSON.parse(content);
+    try {
+        const content = fs.readFileSync(DATA_FILE, 'utf-8');
+        return JSON.parse(content);
+    } catch (err) {
+        console.error('Error reading predictions.json:', err);
+        // Fallback if file is locked or empty
+        return {};
+    }
 }
 
 function writeData(data: Record<string, any>) {

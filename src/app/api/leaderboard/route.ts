@@ -8,7 +8,13 @@ const DATA_FILE = path.join(process.cwd(), 'data', 'predictions.json');
 
 function readPredictions() {
     if (!fs.existsSync(DATA_FILE)) return {};
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+    try {
+        const content = fs.readFileSync(DATA_FILE, 'utf-8');
+        return JSON.parse(content);
+    } catch (err) {
+        console.error('Error reading predictions for leaderboard:', err);
+        return {};
+    }
 }
 
 async function fetchScorecard() {
