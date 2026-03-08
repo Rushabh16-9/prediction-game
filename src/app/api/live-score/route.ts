@@ -48,63 +48,57 @@ export async function GET() {
 
         const data = await res.json();
 
-        // IND vs NZ T20 World Cup Final - Narendra Modi Stadium, Ahmedabad
-        // Use a simple in-memory state to maintain continuity (in production, use database/redis)
-        if (!global.liveScoreState) {
-            global.liveScoreState = {
-                runs: 45,  // Starting score for T20
-                wickets: 1,
-                overs: 6.2, // T20 format - faster progression
-                lastUpdate: Date.now(),
-                battingTeam: 'IND',
-                bowlingTeam: 'NZ'
-            };
-        }
+        // For production, return the actual match data from the API
+        // If API fails, return preview data as per the user's JSON
 
-        const state = global.liveScoreState;
-        const now = Date.now();
-        const timeDiff = now - state.lastUpdate;
+        // Check if we have valid data
+        if (data && data.status !== 'failure') {
+            // Parse the real API response
+            const matchInfo = data?.data?.matchInfo || data?.matchInfo;
+            const matchScore = data?.data?.matchScore || data?.matchScore;
 
-        // Update every 2-4 seconds for T20 excitement
-        if (timeDiff > 2500) {
-            // Progress overs: add 1-2 balls (faster T20 pace)
-            const ballsToAdd = Math.random() < 0.6 ? 1 : 2;
-            let newOvers = state.overs;
+            if (matchInfo) {
+                // Determine current batting team
+                const currBatTeamId = matchInfo.currBatTeamId;
+                const team1 = matchInfo.team1;
+                const team2 = matchInfo.team2;
 
-            for (let i = 0; i < ballsToAdd; i++) {
-                const currentBalls = Math.round((newOvers % 1) * 10); // Get balls part
-                if (currentBalls >= 5) {
-                    // Complete over, start new one
-                    newOvers = Math.floor(newOvers) + 1 + 0.0;
-                } else {
-                    // Add one ball
-                    newOvers = Math.floor(newOvers) + ((currentBalls + 1) / 10);
-                }
+                const battingTeam = currBatTeamId === team1.teamId ? team1.teamSName : team2.teamSName;
+                const bowlingTeam = currBatTeamId === team1.teamId ? team2.teamSName : team1.teamSName;
+
+                // Get current innings score
+                const battingTeamScore = currBatTeamId === team1.teamId ? matchScore.team1Score : matchScore.team2Score;
+
+                // Find the latest innings for batting team
+                const inningsKeys = Object.keys(battingTeamScore || {});
+                const latestInningsKey = inningsKeys[inningsKeys.length - 1];
+                const currentInnings = battingTeamScore?.[latestInningsKey];
+
+                const score = currentInnings?.runs ?? 0;
+                const wickets = currentInnings?.wickets ?? 0;
+                const overs = currentInnings?.overs ?? 0;
+
+                const status = matchInfo.state || 'Live';
+                const liveText = matchInfo.status || `${battingTeam} ${score}/${wickets} (${overs}) — ${status}`;
+
+                return NextResponse.json({
+                    status,
+                    liveText,
+                    teams: {
+                        batting: { name: battingTeam, score, wickets, overs },
+                        bowling: { name: bowlingTeam, score: 0, wickets: 0, overs: 0 },
+                    },
+                });
             }
-
-            // T20 scoring: more aggressive - higher chance of boundaries
-            const runsScored = Math.random() < 0.25 ? 0 :
-                              Math.random() < 0.4 ? 1 :
-                              Math.random() < 0.5 ? 2 :
-                              Math.random() < 0.6 ? 3 :
-                              Math.random() < 0.75 ? 4 :
-                              Math.random() < 0.85 ? 5 : 6;
-
-            // Wickets less frequent in T20 (3% chance)
-            const wicketFell = Math.random() < 0.03 && state.wickets < 10;
-
-            state.runs += runsScored;
-            if (wicketFell) state.wickets += 1;
-            state.overs = newOvers;
-            state.lastUpdate = now;
         }
 
+        // Fallback: Use the preview data from user's JSON (IND vs NZ T20 World Cup Final)
         return NextResponse.json({
-            status: 'Live',
-            liveText: `🏆 T20 World Cup Final - India ${state.runs}/${state.wickets} (${state.overs.toFixed(1)} overs)`,
+            status: 'Preview',
+            liveText: '🏆 T20 World Cup Final - Match starts at Mar 08, 13:30 GMT',
             teams: {
-                batting: { name: state.battingTeam, score: state.runs, wickets: state.wickets, overs: state.overs },
-                bowling: { name: state.battingTeam === 'IND' ? 'NZ' : 'IND', score: 0, wickets: 0, overs: 0 },
+                batting: { name: 'IND', score: 0, wickets: 0, overs: 0 },
+                bowling: { name: 'NZ', score: 0, wickets: 0, overs: 0 },
             },
         });
     } catch (err) {

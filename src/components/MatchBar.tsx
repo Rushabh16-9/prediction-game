@@ -106,8 +106,8 @@ export default function MatchBar() {
     useEffect(() => {
         fetchScore(); // Initial fetch
 
-        // Poll every 2 seconds for T20 excitement
-        const interval = setInterval(fetchScore, 2000);
+        // Poll every 10 seconds for production (realistic cricket updates)
+        const interval = setInterval(fetchScore, 10000);
         return () => clearInterval(interval);
     }, [isMuted]);
 
