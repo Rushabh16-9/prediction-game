@@ -18,6 +18,9 @@ export default function UserSelection({ onSelect }: Props) {
         try {
             const res = await fetch('/api/active-sessions');
             const data = await res.json();
+            if (data.error) {
+                setError(data.error);
+            }
             setTakenNames(data.takenNames || []);
         } catch {
             // Fail silently – don't block UI
@@ -48,10 +51,13 @@ export default function UserSelection({ onSelect }: Props) {
                 setClaiming(null);
                 return;
             }
-            if (!res.ok) throw new Error('Failed to claim name');
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || 'Failed to claim name');
+            }
             onSelect(guest);
-        } catch {
-            setError('Something went wrong. Please try again.');
+        } catch (err: any) {
+            setError(err.message || 'Something went wrong. Please try again.');
         } finally {
             setClaiming(null);
         }

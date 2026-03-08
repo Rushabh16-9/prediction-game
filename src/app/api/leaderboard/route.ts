@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
+import { getRedisClient } from '@/lib/redis';
 import { GUESTS } from '@/lib/constants';
 import { calculateScore, parseScorecardToResults } from '@/lib/scoring';
 
-const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
-
 async function readPredictions() {
+    const redis = getRedisClient();
     const all = await redis.hgetall('predictions') as Record<string, string> | null;
     const parsed: Record<string, any> = {};
     for (const [key, val] of Object.entries(all || {})) {
@@ -57,8 +53,8 @@ export async function GET() {
 
         leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
         return NextResponse.json({ leaderboard });
-    } catch (err) {
+    } catch (err: any) {
         console.error('Leaderboard error:', err);
-        return NextResponse.json({ leaderboard: [] }, { status: 500 });
+        return NextResponse.json({ leaderboard: [], error: err.message }, { status: 500 });
     }
 }

@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
-
-const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+import { getRedisClient } from '@/lib/redis';
 
 // GET - return list of currently taken names
 export async function GET() {
-    const sessions = await redis.hgetall('active_sessions') as Record<string, string> | null;
-    return NextResponse.json({ takenNames: Object.keys(sessions || {}) });
+    try {
+        const redis = getRedisClient();
+        const sessions = await redis.hgetall('active_sessions') as Record<string, string> | null;
+        return NextResponse.json({ takenNames: Object.keys(sessions || {}) });
+    } catch (err: any) {
+        return NextResponse.json({ takenNames: [], error: err.message }, { status: 500 });
+    }
 }
 
 // POST - claim a name (login)
 export async function POST(req: NextRequest) {
     try {
+        const redis = getRedisClient();
         const { name } = await req.json();
         if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 
@@ -25,20 +26,21 @@ export async function POST(req: NextRequest) {
 
         await redis.hset('active_sessions', { [name]: new Date().toISOString() });
         return NextResponse.json({ success: true });
-    } catch {
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    } catch (err: any) {
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }
 
 // DELETE - release a name (logout)
 export async function DELETE(req: NextRequest) {
     try {
+        const redis = getRedisClient();
         const { name } = await req.json();
         if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 
         await redis.hdel('active_sessions', name);
         return NextResponse.json({ success: true });
-    } catch {
-        return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    } catch (err: any) {
+        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
     }
 }
