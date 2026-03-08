@@ -15,23 +15,22 @@ export default function Scorecard({ score }: ScorecardProps) {
   const { currentBatsmen, currentBowler, partnership, recentOvers } = score.scorecard;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Current Batsmen */}
       {currentBatsmen && currentBatsmen.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" />
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0" />
             Current Batsmen
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {currentBatsmen.map((batsman, idx) => (
               <div
                 key={idx}
-                className={`p-4 rounded-lg border-2 ${
-                  batsman.isStriker
-                    ? "border-orange-500 bg-orange-50"
-                    : "border-gray-300 bg-gray-50"
-                }`}
+                className={`p-4 rounded-lg border-2 ${batsman.isStriker
+                  ? "border-orange-500 bg-orange-50"
+                  : "border-gray-300 bg-gray-50"
+                  }`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -69,12 +68,12 @@ export default function Scorecard({ score }: ScorecardProps) {
 
       {/* Current Bowler */}
       {currentBowler && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Target className="w-5 h-5 text-red-600" />
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
+            <Target className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 shrink-0" />
             Current Bowler
           </h2>
-          <div className="bg-red-50 border-2 border-red-300 rounded-lg p-6">
+          <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 sm:p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <p className="text-2xl font-bold text-gray-800">{currentBowler.name}</p>
@@ -84,7 +83,7 @@ export default function Scorecard({ score }: ScorecardProps) {
                 <p className="text-3xl font-bold text-red-600">{currentBowler.wickets}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4">
               <div>
                 <p className="text-gray-500 text-xs">Overs</p>
                 <p className="text-lg font-semibold text-gray-800">{currentBowler.overs}</p>
@@ -152,8 +151,8 @@ export default function Scorecard({ score }: ScorecardProps) {
 
       {/* Recent Overs */}
       {recentOvers && recentOvers.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Overs</h2>
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Recent Overs</h2>
           <div className="space-y-2">
             {recentOvers.map((over, idx) => (
               <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

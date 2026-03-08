@@ -122,67 +122,55 @@ export default function MatchBar({ onScoreUpdate }: MatchBarProps) {
 
     return (
         <div className="sticky top-0 z-50 w-full bg-[#004de6] text-white shadow-lg border-b-4 border-orange-400">
-            <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
+                {/* Left: LIVE indicator */}
+                <div className="flex items-center gap-1.5 shrink-0">
                     <div className="relative flex items-center justify-center">
-                        <Radio className="w-5 h-5 text-red-400 z-10" />
+                        <Radio className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 z-10" />
                         <span className="absolute animate-ping inline-flex h-full w-full rounded-full bg-red-400 opacity-40"></span>
                     </div>
-                    <span className="font-bold tracking-wider text-sm hidden sm:inline-block">LIVE</span>
+                    <span className="font-bold tracking-wider text-xs sm:text-sm hidden sm:inline-block">LIVE</span>
                 </div>
 
-                <div className="flex-1 flex justify-center">
+                {/* Center: Score */}
+                <div className="flex-1 flex justify-center min-w-0">
                     {loading ? (
                         <div className="flex items-center gap-2 text-white/70">
-                            <Activity className="w-4 h-4 animate-spin" />
-                            <span className="text-sm font-medium">Fetching Score...</span>
+                            <Activity className="w-4 h-4 animate-spin shrink-0" />
+                            <span className="text-xs sm:text-sm font-medium">Fetching Score...</span>
                         </div>
                     ) : score ? (
-                        <div className="flex flex-col items-center gap-2 w-full">
-                            {/* Match Description, Series, Venue */}
-                            {(score.matchDesc || score.series) && (
-                                <div className="text-xs md:text-sm text-white/80 truncate">
-                                    {score.series && <span className="font-semibold">{score.series}</span>}
-                                    {score.matchDesc && <span> • {score.matchDesc}</span>}
-                                </div>
-                            )}
-                            
-                            {/* Score Display */}
-                            <div className="flex items-center gap-4">
-                                <div className="text-lg md:text-xl font-black tracking-tight flex items-center gap-2">
-                                    <span className="text-orange-300">{score.teams.batting.name}</span>
+                        <div className="flex flex-col items-center w-full min-w-0">
+                            {/* Score row */}
+                            <div className="flex items-center gap-1.5 sm:gap-3">
+                                <div className="text-sm sm:text-xl font-black tracking-tight flex items-center gap-1 sm:gap-2">
+                                    <span className="text-orange-300 max-w-[55px] sm:max-w-none truncate">{score.teams.batting.name}</span>
                                     <span>{score.teams.batting.score}/{score.teams.batting.wickets}</span>
-                                    <span className="text-sm font-normal text-white/70">({score.teams.batting.overs})</span>
+                                    <span className="text-xs font-normal text-white/70">({score.teams.batting.overs})</span>
                                 </div>
                                 {score.teams.bowling.name && (
-                                    <div className="hidden md:flex items-center gap-2 text-sm text-white/70">
+                                    <div className="hidden md:flex items-center gap-1 text-sm text-white/70">
                                         <span>vs</span>
                                         <span className="text-white/90">{score.teams.bowling.name}</span>
                                     </div>
                                 )}
                             </div>
-
-                            {/* Venue */}
-                            {score.venue && (
-                                <div className="text-xs text-white/60">
-                                    📍 {score.venue}
-                                </div>
-                            )}
-
-                            {/* Live Text Status */}
-                            <div className="text-xs md:text-sm text-white/80 max-w-sm truncate">
+                            {/* Live status text */}
+                            <div className="text-[10px] sm:text-xs text-white/75 max-w-[180px] sm:max-w-sm truncate text-center leading-tight">
                                 {score.liveText}
                             </div>
                         </div>
                     ) : (
-                        <div className="text-sm font-medium text-white/70">Match data unavailable</div>
+                        <div className="text-xs sm:text-sm font-medium text-white/70">Match data unavailable</div>
                     )}
                 </div>
 
+                {/* Right: Mute button */}
                 <button
                     onClick={() => setIsMuted(!isMuted)}
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                    className="p-2 sm:p-2.5 hover:bg-white/10 rounded-full transition-colors shrink-0 touch-manipulation"
                     title={isMuted ? "Unmute sounds" : "Mute sounds"}
+                    aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
                 >
                     {isMuted ? <VolumeX className="w-5 h-5 text-white/60" /> : <Volume2 className="w-5 h-5" />}
                 </button>

@@ -26,21 +26,28 @@ const CATEGORY_COLORS: Record<string, string> = {
     'MATCH FIELDING & RESULTS': 'from-orange-500 to-orange-600',
 };
 
-// Category order when India bats first
-const ORDER_INDIA_BATS_FIRST = [
+// Categories shown when India bats first (hide bowling questions since NZ bowls 1st innings)
+const CATEGORIES_INDIA_BATS_FIRST = [
     'PRE-MATCH',
     'INDIAN BATTING phase',
+    'NEW ZEALAND (Common)',
+    'MATCH FIELDING & RESULTS'
+];
+
+// Categories shown when India bowls first (hide batting questions since NZ bats 1st innings)
+const CATEGORIES_INDIA_BOWLS_FIRST = [
+    'PRE-MATCH',
     'INDIAN BOWLING phase',
     'NEW ZEALAND (Common)',
     'MATCH FIELDING & RESULTS'
 ];
 
-// Category order when India bowls first
-const ORDER_INDIA_BOWLS_FIRST = [
+// All categories shown before toss
+const ALL_CATEGORIES = [
     'PRE-MATCH',
-    'INDIAN BOWLING phase',  // India bowling first
-    'NEW ZEALAND (Common)',  // NZ batting
-    'INDIAN BATTING phase',  // India batting later
+    'INDIAN BATTING phase',
+    'INDIAN BOWLING phase',
+    'NEW ZEALAND (Common)',
     'MATCH FIELDING & RESULTS'
 ];
 
@@ -109,27 +116,22 @@ export default function PredictionForm({ currentUser }: Props) {
         }
     };
 
-    // Sort categories based on toss result
-    const categoryOrder = indiaBattingFirst === false ? ORDER_INDIA_BOWLS_FIRST : ORDER_INDIA_BATS_FIRST;
-    
-    // Sort questions by our custom order
-    const sortedQuestions = [...QUESTIONS].sort((a, b) => {
-        const orderA = categoryOrder.indexOf(a.category);
-        const orderB = categoryOrder.indexOf(b.category);
-        if (orderA !== orderB) return orderA - orderB;
-        return a.id - b.id;
-    });
+    // Determine which categories to show based on toss
+    const categories =
+        indiaBattingFirst === true
+            ? CATEGORIES_INDIA_BATS_FIRST
+            : indiaBattingFirst === false
+                ? CATEGORIES_INDIA_BOWLS_FIRST
+                : ALL_CATEGORIES; // null = toss not done yet, show everything
 
-    // Group sorted questions by category
-    const answeredCount = Object.keys(answers).length;
-    const totalQuestions = QUESTIONS.length;
+    // Only count questions from visible categories
+    const visibleQuestions = QUESTIONS.filter((q) => categories.includes(q.category));
+    const answeredCount = visibleQuestions.filter((q) => answers[q.id] !== undefined && answers[q.id] !== '').length;
+    const totalQuestions = visibleQuestions.length;
     const progress = Math.round((answeredCount / totalQuestions) * 100);
 
-    const categories = categoryOrder;
-
-    // Build category questions map from sorted questions
     const getCategoryQuestions = (category: string) => {
-        return sortedQuestions.filter((q) => q.category === category);
+        return visibleQuestions.filter((q) => q.category === category);
     };
 
     if (initialLoading) {
@@ -148,7 +150,7 @@ export default function PredictionForm({ currentUser }: Props) {
                 </div>
                 <h2 className="text-3xl font-bold text-slate-800">Predictions Submitted!</h2>
                 <p className="text-slate-500 max-w-md">
-                    Your {totalQuestions} predictions have been locked in, {currentUser}. Check the leaderboard to see your standing!
+                    Your {Object.keys(answers).length} predictions have been locked in, {currentUser}. Check the leaderboard to see your standing!
                 </p>
                 {savedPoints !== null && (
                     <div className="bg-blue-50 border border-blue-200 rounded-2xl px-8 py-4">
@@ -166,12 +168,22 @@ export default function PredictionForm({ currentUser }: Props) {
     return (
         <div className="space-y-8">
             {/* Toss Info Banner */}
-            {indiaBattingFirst !== null && (
+            {indiaBattingFirst === null ? (
+                <div className="rounded-xl p-4 text-center bg-yellow-50 border border-yellow-200">
+                    <p className="font-semibold text-yellow-700">⏳ Toss Pending</p>
+                    <p className="text-sm text-slate-500 mt-1">All {QUESTIONS.length} questions shown — they'll be filtered once the toss is done</p>
+                </div>
+            ) : (
                 <div className={`rounded-xl p-4 text-center ${indiaBattingFirst ? 'bg-blue-50 border border-blue-200' : 'bg-orange-50 border border-orange-200'}`}>
-                    <p className={`font-semibold ${indiaBattingFirst ? 'text-blue-700' : 'text-orange-700'}`}>
+                    <p className={`font-semibold text-lg ${indiaBattingFirst ? 'text-blue-700' : 'text-orange-700'}`}>
                         {indiaBattingFirst ? '🏏 India BATTING First' : '⚡ India BOWLING First'}
                     </p>
-                    <p className="text-sm text-slate-500 mt-1">Questions are ordered based on match flow</p>
+                    <p className="text-sm text-slate-500 mt-1">
+                        Showing <span className="font-semibold text-slate-700">{totalQuestions} relevant questions</span> —{' '}
+                        {indiaBattingFirst
+                            ? 'India Batting + NZ Common + Match Results'
+                            : 'India Bowling + NZ Common + Match Results'}
+                    </p>
                 </div>
             )}
 
@@ -194,7 +206,7 @@ export default function PredictionForm({ currentUser }: Props) {
                 const catQuestions = getCategoryQuestions(category);
                 // Skip empty categories
                 if (catQuestions.length === 0) return null;
-                
+
                 const catAnswered = catQuestions.filter((q) => answers[q.id] !== undefined && answers[q.id] !== "").length;
                 const icon = CATEGORY_ICONS[category] || '📋';
                 const colorClass = CATEGORY_COLORS[category] || 'from-blue-600 to-blue-700';
@@ -202,7 +214,7 @@ export default function PredictionForm({ currentUser }: Props) {
                 return (
                     <div key={category} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                         {/* Category Header */}
-                        <div className={`bg-gradient-to-r ${colorClass} p-5 flex items-center justify-between`}>
+                        <div className={`bg-gradient-to-r ${colorClass} p-4 sm:p-5 flex items-center justify-between`}>
                             <div className="flex items-center gap-3">
                                 <span className="text-2xl">{icon}</span>
                                 <h3 className="text-lg font-bold text-white tracking-tight">{category.toUpperCase()}</h3>
@@ -215,7 +227,7 @@ export default function PredictionForm({ currentUser }: Props) {
                         {/* Questions */}
                         <div className="divide-y divide-slate-50">
                             {catQuestions.map((q) => (
-                                <div key={q.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                                <div key={q.id} className="p-4 sm:p-5 flex flex-col gap-3">
                                     <div className="flex-1">
                                         <div className="flex items-start gap-3">
                                             <span className="mt-0.5 w-7 h-7 rounded-full bg-blue-50 text-blue-600 font-bold text-xs flex items-center justify-center shrink-0">
@@ -228,7 +240,7 @@ export default function PredictionForm({ currentUser }: Props) {
                                         </div>
                                     </div>
 
-                                    <div className="sm:w-48 pl-10 sm:pl-0">
+                                    <div className="w-full">
                                         {q.type === 'select' && q.options ? (
                                             <select
                                                 value={answers[q.id] ?? ''}
@@ -267,7 +279,7 @@ export default function PredictionForm({ currentUser }: Props) {
             })}
 
             {/* Submit Button */}
-            <div className="sticky bottom-4 flex justify-center pb-2">
+            <div className="sticky bottom-0 bg-slate-50/80 backdrop-blur-sm pt-3 pb-6 flex justify-center">
                 <button
                     onClick={handleSubmit}
                     disabled={loading || answeredCount < totalQuestions}
