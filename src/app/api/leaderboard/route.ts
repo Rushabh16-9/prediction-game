@@ -13,7 +13,7 @@ function readPredictions() {
 
 async function fetchScorecard() {
     const matchId = process.env.MATCH_ID;
-    const apiKey = process.env.RAPIDAPI_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_CRICKET_API_KEY || process.env.RAPIDAPI_KEY;
 
     if (!matchId || !apiKey) return null;
 
