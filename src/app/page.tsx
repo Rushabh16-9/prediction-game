@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Guest } from "@/lib/types";
+import { Guest, MatchScore } from "@/lib/types";
 import UserSelection from "@/components/UserSelection";
 import MatchBar from "@/components/MatchBar";
+import Scorecard from "@/components/Scorecard";
 import PredictionForm from "@/components/PredictionForm";
 import Leaderboard from "@/components/Leaderboard";
 import { Trophy, CheckSquare } from "lucide-react";
@@ -13,6 +14,7 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<Guest | null>(null);
   const [activeTab, setActiveTab] = useState<'predict' | 'leaderboard'>('predict');
   const [isMounted, setIsMounted] = useState(false);
+  const [score, setScore] = useState<MatchScore | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -41,7 +43,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20">
       {/* Sticky Match Bar lives at the top */}
-      <MatchBar />
+      <MatchBar onScoreUpdate={setScore} />
+
+      {/* Detailed Scorecard */}
+      <Scorecard score={score} />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
 

@@ -5,7 +5,11 @@ import { MatchScore } from "@/lib/types";
 import { Activity, Radio, Volume2, VolumeX } from "lucide-react";
 import confetti from "canvas-confetti";
 
-export default function MatchBar() {
+interface MatchBarProps {
+    onScoreUpdate?: (score: MatchScore | null) => void;
+}
+
+export default function MatchBar({ onScoreUpdate }: MatchBarProps) {
     const [score, setScore] = useState<MatchScore | null>(null);
     const [isMuted, setIsMuted] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -70,6 +74,11 @@ export default function MatchBar() {
             if (data && data.status) {
                 setScore(data);
 
+                // Pass score data to parent component for Scorecard display
+                if (onScoreUpdate) {
+                    onScoreUpdate(data);
+                }
+
                 // Logic to detect changes and play sound
                 if (prevScoreRef.current) {
                     const prev = prevScoreRef.current;
@@ -129,14 +138,39 @@ export default function MatchBar() {
                             <span className="text-sm font-medium">Fetching Score...</span>
                         </div>
                     ) : score ? (
-                        <div className="flex items-center gap-4">
-                            <div className="text-lg md:text-xl font-black tracking-tight flex items-center gap-2">
-                                <span className="text-orange-300">{score.teams.batting.name}</span>
-                                <span>{score.teams.batting.score}/{score.teams.batting.wickets}</span>
-                                <span className="text-sm font-normal text-white/70">({score.teams.batting.overs})</span>
+                        <div className="flex flex-col items-center gap-2 w-full">
+                            {/* Match Description, Series, Venue */}
+                            {(score.matchDesc || score.series) && (
+                                <div className="text-xs md:text-sm text-white/80 truncate">
+                                    {score.series && <span className="font-semibold">{score.series}</span>}
+                                    {score.matchDesc && <span> • {score.matchDesc}</span>}
+                                </div>
+                            )}
+                            
+                            {/* Score Display */}
+                            <div className="flex items-center gap-4">
+                                <div className="text-lg md:text-xl font-black tracking-tight flex items-center gap-2">
+                                    <span className="text-orange-300">{score.teams.batting.name}</span>
+                                    <span>{score.teams.batting.score}/{score.teams.batting.wickets}</span>
+                                    <span className="text-sm font-normal text-white/70">({score.teams.batting.overs})</span>
+                                </div>
+                                {score.teams.bowling.name && (
+                                    <div className="hidden md:flex items-center gap-2 text-sm text-white/70">
+                                        <span>vs</span>
+                                        <span className="text-white/90">{score.teams.bowling.name}</span>
+                                    </div>
+                                )}
                             </div>
-                            <div className="hidden md:block w-px h-6 bg-white/20"></div>
-                            <div className="text-sm text-white/80 hidden md:block max-w-xs truncate">
+
+                            {/* Venue */}
+                            {score.venue && (
+                                <div className="text-xs text-white/60">
+                                    📍 {score.venue}
+                                </div>
+                            )}
+
+                            {/* Live Text Status */}
+                            <div className="text-xs md:text-sm text-white/80 max-w-sm truncate">
                                 {score.liveText}
                             </div>
                         </div>

@@ -22,11 +22,39 @@ export interface Prediction {
 }
 
 export interface MatchScore {
-  matchId: string;
-  status: string; // e.g. "Live", "Completed"
+  matchId?: string;
+  status: string; // e.g. "Live", "Completed", "Preview"
+  matchDesc?: string;
+  series?: string;
+  venue?: string;
   teams: {
-    batting: { name: string; score: number; wickets: number; overs: number };
-    bowling: { name: string; score: number; wickets: number; overs: number };
+    batting: { name: string; fullName?: string; score: number; wickets: number; overs: number };
+    bowling: { name: string; fullName?: string; score: number; wickets: number; overs: number };
   };
   liveText: string;
+  scorecard?: {
+    currentBatsmen: Array<{
+      name: string;
+      runs: number;
+      balls: number;
+      fours: number;
+      sixes: number;
+      strikeRate: number;
+      isStriker: boolean;
+    }>;
+    currentBowler?: {
+      name: string;
+      overs: number;
+      maidens: number;
+      runs: number;
+      wickets: number;
+      economy: number;
+    };
+    partnership?: {
+      runs: number;
+      balls: number;
+      batsmen: string[];
+    };
+    recentOvers: string[];
+  };
 }
