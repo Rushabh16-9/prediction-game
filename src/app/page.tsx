@@ -21,17 +21,35 @@ export default function Home() {
     const saved = localStorage.getItem('matchGameUser');
     if (saved) {
       setCurrentUser(saved as Guest);
+      // Re-claim the session in case server restarted
+      fetch('/api/active-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: saved }),
+      }).catch(() => { }); // Ignore 409 (already claimed) or errors
     }
   }, []);
 
   const handleLogin = (guest: Guest) => {
     setCurrentUser(guest);
     localStorage.setItem('matchGameUser', guest);
+    // Session already claimed in UserSelection before calling this
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const name = currentUser;
     setCurrentUser(null);
     localStorage.removeItem('matchGameUser');
+    // Release the session so others can claim this name
+    if (name) {
+      try {
+        await fetch('/api/active-sessions', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+      } catch { /* ignore */ }
+    }
   };
 
   if (!isMounted) return null; // Avoid hydration mismatch
