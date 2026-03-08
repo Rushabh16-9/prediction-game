@@ -32,6 +32,11 @@ export interface MatchScore {
     bowling: { name: string; fullName?: string; score: number; wickets: number; overs: number };
   };
   liveText: string;
+  tossInfo?: {
+    winner: string | null;
+    choice: string | null;
+    indiaBattingFirst: boolean;
+  };
   scorecard?: {
     currentBatsmen: Array<{
       name: string;

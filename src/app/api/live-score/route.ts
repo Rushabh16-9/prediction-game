@@ -12,6 +12,7 @@ export async function GET() {
                 batting: { name: 'Team A', score: 0, wickets: 0, overs: '0.0' },
                 bowling: { name: 'Team B', score: 0, wickets: 0, overs: '0.0' },
             },
+            tossInfo: { winner: null, choice: null, indiaBattingFirst: true },
         });
     }
 
@@ -50,6 +51,7 @@ export async function GET() {
                     batting: { name: 'Team A', score: 0, wickets: 0, overs: '0.0' },
                     bowling: { name: 'Team B', score: 0, wickets: 0, overs: '0.0' },
                 },
+                tossInfo: { winner: null, choice: null, indiaBattingFirst: true },
             });
         }
 
@@ -73,11 +75,48 @@ export async function GET() {
                     batting: { name: 'IND', fullName: 'India', score: 0, wickets: 0, overs: '0.0' },
                     bowling: { name: 'NZ', fullName: 'New Zealand', score: 0, wickets: 0, overs: '0.0' },
                 },
+                tossInfo: { winner: null, choice: null, indiaBattingFirst: true },
             });
         }
 
         const matchInfo = targetMatch?.matchInfo;
         const matchScore = targetMatch?.matchScore;
+
+        // Extract toss information
+        let tossWinner: string | null = null;
+        let tossChoice: string | null = null;
+        let indiaBattingFirst = true;
+
+        if (matchInfo) {
+            const tossResults = matchInfo?.tossResults;
+            if (tossResults) {
+                const winnerName = tossResults?.tossWinnerName || '';
+                const decision = tossResults?.decision || '';
+                
+                if (winnerName.toLowerCase().includes('india')) {
+                    tossWinner = 'India';
+                } else if (winnerName.toLowerCase().includes('zealand') || winnerName.toLowerCase().includes('nz')) {
+                    tossWinner = 'New Zealand';
+                }
+                
+                if (decision.toLowerCase() === 'bat') {
+                    tossChoice = 'Bat';
+                } else if (decision.toLowerCase() === 'field') {
+                    tossChoice = 'Bowl';
+                }
+
+                // Determine if India is batting first
+                if (tossWinner === 'India' && tossChoice === 'Bat') {
+                    indiaBattingFirst = true;
+                } else if (tossWinner === 'India' && tossChoice === 'Bowl') {
+                    indiaBattingFirst = false;
+                } else if (tossWinner === 'New Zealand' && tossChoice === 'Bat') {
+                    indiaBattingFirst = false;
+                } else if (tossWinner === 'New Zealand' && tossChoice === 'Bowl') {
+                    indiaBattingFirst = true;
+                }
+            }
+        }
 
         if (!matchInfo) {
             return NextResponse.json({
@@ -87,6 +126,7 @@ export async function GET() {
                     batting: { name: 'IND', fullName: 'India', score: 0, wickets: 0, overs: '0.0' },
                     bowling: { name: 'NZ', fullName: 'New Zealand', score: 0, wickets: 0, overs: '0.0' },
                 },
+                tossInfo: { winner: tossWinner, choice: tossChoice, indiaBattingFirst },
             });
         }
 
@@ -118,6 +158,7 @@ export async function GET() {
                         overs: '0.0'
                     },
                 },
+                tossInfo: { winner: tossWinner, choice: tossChoice, indiaBattingFirst },
             });
         }
 
@@ -227,6 +268,7 @@ export async function GET() {
                     overs: '0.0'
                 },
             },
+            tossInfo: { winner: tossWinner, choice: tossChoice, indiaBattingFirst },
             scorecard: {
                 currentBatsmen: currentBatsmen,
                 currentBowler: currentBowler,
@@ -248,6 +290,7 @@ export async function GET() {
                 batting: { name: 'IND', fullName: 'India', score: 0, wickets: 0, overs: '0.0' },
                 bowling: { name: 'NZ', fullName: 'New Zealand', score: 0, wickets: 0, overs: '0.0' },
             },
+            tossInfo: { winner: null, choice: null, indiaBattingFirst: true },
         });
     }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Guest } from "@/lib/types";
+import { Guest, MatchScore } from "@/lib/types";
 import { QUESTIONS } from "@/lib/constants";
 import { CheckCircle, ChevronRight, Loader2, Lock } from "lucide-react";
 import clsx from "clsx";
@@ -26,12 +26,31 @@ const CATEGORY_COLORS: Record<string, string> = {
     'MATCH FIELDING & RESULTS': 'from-orange-500 to-orange-600',
 };
 
+// Category order when India bats first
+const ORDER_INDIA_BATS_FIRST = [
+    'PRE-MATCH',
+    'INDIAN BATTING phase',
+    'INDIAN BOWLING phase',
+    'NEW ZEALAND (Common)',
+    'MATCH FIELDING & RESULTS'
+];
+
+// Category order when India bowls first
+const ORDER_INDIA_BOWLS_FIRST = [
+    'PRE-MATCH',
+    'INDIAN BOWLING phase',  // India bowling first
+    'NEW ZEALAND (Common)',  // NZ batting
+    'INDIAN BATTING phase',  // India batting later
+    'MATCH FIELDING & RESULTS'
+];
+
 export default function PredictionForm({ currentUser }: Props) {
     const [answers, setAnswers] = useState<Record<number, string>>({});
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [savedPoints, setSavedPoints] = useState<number | null>(null);
+    const [indiaBattingFirst, setIndiaBattingFirst] = useState<boolean | null>(null);
 
     useEffect(() => {
         // Load any existing predictions for this user
@@ -45,6 +64,24 @@ export default function PredictionForm({ currentUser }: Props) {
         }
         setInitialLoading(false);
     }, [currentUser]);
+
+    // Fetch toss info to determine question order
+    useEffect(() => {
+        async function fetchTossInfo() {
+            try {
+                const res = await fetch('/api/live-score');
+                const data: MatchScore = await res.json();
+                if (data?.tossInfo?.indiaBattingFirst !== undefined) {
+                    setIndiaBattingFirst(data.tossInfo.indiaBattingFirst);
+                }
+            } catch (err) {
+                console.error('Error fetching toss info:', err);
+                // Default to India batting first
+                setIndiaBattingFirst(true);
+            }
+        }
+        fetchTossInfo();
+    }, []);
 
     const handleChange = (questionId: number, value: string) => {
         setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -72,11 +109,28 @@ export default function PredictionForm({ currentUser }: Props) {
         }
     };
 
+    // Sort categories based on toss result
+    const categoryOrder = indiaBattingFirst === false ? ORDER_INDIA_BOWLS_FIRST : ORDER_INDIA_BATS_FIRST;
+    
+    // Sort questions by our custom order
+    const sortedQuestions = [...QUESTIONS].sort((a, b) => {
+        const orderA = categoryOrder.indexOf(a.category);
+        const orderB = categoryOrder.indexOf(b.category);
+        if (orderA !== orderB) return orderA - orderB;
+        return a.id - b.id;
+    });
+
+    // Group sorted questions by category
     const answeredCount = Object.keys(answers).length;
     const totalQuestions = QUESTIONS.length;
     const progress = Math.round((answeredCount / totalQuestions) * 100);
 
-    const categories = [...new Set(QUESTIONS.map((q) => q.category))];
+    const categories = categoryOrder;
+
+    // Build category questions map from sorted questions
+    const getCategoryQuestions = (category: string) => {
+        return sortedQuestions.filter((q) => q.category === category);
+    };
 
     if (initialLoading) {
         return (
@@ -111,6 +165,16 @@ export default function PredictionForm({ currentUser }: Props) {
 
     return (
         <div className="space-y-8">
+            {/* Toss Info Banner */}
+            {indiaBattingFirst !== null && (
+                <div className={`rounded-xl p-4 text-center ${indiaBattingFirst ? 'bg-blue-50 border border-blue-200' : 'bg-orange-50 border border-orange-200'}`}>
+                    <p className={`font-semibold ${indiaBattingFirst ? 'text-blue-700' : 'text-orange-700'}`}>
+                        {indiaBattingFirst ? '🏏 India BATTING First' : '⚡ India BOWLING First'}
+                    </p>
+                    <p className="text-sm text-slate-500 mt-1">Questions are ordered based on match flow</p>
+                </div>
+            )}
+
             {/* Progress Bar */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-3">
@@ -127,7 +191,10 @@ export default function PredictionForm({ currentUser }: Props) {
 
             {/* Question Categories */}
             {categories.map((category) => {
-                const catQuestions = QUESTIONS.filter((q) => q.category === category);
+                const catQuestions = getCategoryQuestions(category);
+                // Skip empty categories
+                if (catQuestions.length === 0) return null;
+                
                 const catAnswered = catQuestions.filter((q) => answers[q.id] !== undefined && answers[q.id] !== "").length;
                 const icon = CATEGORY_ICONS[category] || '📋';
                 const colorClass = CATEGORY_COLORS[category] || 'from-blue-600 to-blue-700';
