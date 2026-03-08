@@ -16,6 +16,7 @@ const CATEGORY_ICONS: Record<string, string> = {
     'INDIAN BOWLING phase': '⚡',
     'NEW ZEALAND (Common)': '🥝',
     'MATCH FIELDING & RESULTS': '🏆',
+    'JACKPOT 🎰': '🎰',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -24,6 +25,7 @@ const CATEGORY_COLORS: Record<string, string> = {
     'INDIAN BOWLING phase': 'from-indigo-600 to-indigo-800',
     'NEW ZEALAND (Common)': 'from-gray-600 to-gray-700',
     'MATCH FIELDING & RESULTS': 'from-orange-500 to-orange-600',
+    'JACKPOT 🎰': 'from-yellow-500 to-amber-600',
 };
 
 // Categories shown when India bats first (hide bowling questions since NZ bowls 1st innings)
@@ -31,7 +33,8 @@ const CATEGORIES_INDIA_BATS_FIRST = [
     'PRE-MATCH',
     'INDIAN BATTING phase',
     'NEW ZEALAND (Common)',
-    'MATCH FIELDING & RESULTS'
+    'MATCH FIELDING & RESULTS',
+    'JACKPOT 🎰'
 ];
 
 // Categories shown when India bowls first (hide batting questions since NZ bats 1st innings)
@@ -39,7 +42,8 @@ const CATEGORIES_INDIA_BOWLS_FIRST = [
     'PRE-MATCH',
     'INDIAN BOWLING phase',
     'NEW ZEALAND (Common)',
-    'MATCH FIELDING & RESULTS'
+    'MATCH FIELDING & RESULTS',
+    'JACKPOT 🎰'
 ];
 
 // All categories shown before toss
@@ -48,7 +52,8 @@ const ALL_CATEGORIES = [
     'INDIAN BATTING phase',
     'INDIAN BOWLING phase',
     'NEW ZEALAND (Common)',
-    'MATCH FIELDING & RESULTS'
+    'MATCH FIELDING & RESULTS',
+    'JACKPOT 🎰'
 ];
 
 export default function PredictionForm({ currentUser }: Props) {

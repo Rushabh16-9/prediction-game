@@ -1,10 +1,10 @@
 export type Guest =
-  | 'Jayesh' | 'Pragna' | 'Navin' | 'Hemant' | 'Nimisha' 
-  | 'Soham' | 'Jinesh' | 'Megha' | 'Jaina' | 'Heli' 
-  | 'Dhwani' | 'Jahanvi' | 'Bhrahmi' | 'Aarya' | 'Shital' 
+  | 'Jayesh' | 'Pragna' | 'Navin' | 'Hemant' | 'Nimisha'
+  | 'Soham' | 'Jinesh' | 'Megha' | 'Jaina' | 'Heli'
+  | 'Dhwani' | 'Jahanvi' | 'Bhrahmi' | 'Aarya' | 'Shital'
   | 'Ami' | 'Arhat' | 'Rushabh';
 
-export type QuestionCategory = 'PRE-MATCH' | 'INDIAN BATTING phase' | 'INDIAN BOWLING phase' | 'NEW ZEALAND (Common)' | 'MATCH FIELDING & RESULTS';
+export type QuestionCategory = 'PRE-MATCH' | 'INDIAN BATTING phase' | 'INDIAN BOWLING phase' | 'NEW ZEALAND (Common)' | 'MATCH FIELDING & RESULTS' | 'JACKPOT 🎰';
 
 export interface Question {
   id: number;

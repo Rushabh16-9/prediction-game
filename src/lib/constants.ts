@@ -46,4 +46,14 @@ export const QUESTIONS: Question[] = [
     { id: 28, text: 'Will there be a Run Out in the match?', category: 'MATCH FIELDING & RESULTS', type: 'select', options: ['Yes', 'No'], points: 10 },
     { id: 29, text: 'Who will be the Player of the Match?', category: 'MATCH FIELDING & RESULTS', type: 'text', points: 15 },
     { id: 30, text: 'FINAL WINNER: Will India win the Match?', category: 'MATCH FIELDING & RESULTS', type: 'select', options: ['Yes', 'No'], points: 20 },
+
+    // JACKPOT 🎰 — High-risk, high-reward (25–50 pts)
+    { id: 31, text: '🎰 JACKPOT: India\'s total score range?', category: 'JACKPOT 🎰', type: 'select', options: ['Under 140', '140–159', '160–179', '180–199', '200–219', '220+'], points: 30 },
+    { id: 32, text: '🎰 JACKPOT: Who will take India\'s FIRST wicket?', category: 'JACKPOT 🎰', type: 'text', points: 35 },
+    { id: 33, text: '🎰 JACKPOT: Will Bumrah bowl a maiden over?', category: 'JACKPOT 🎰', type: 'select', options: ['Yes', 'No'], points: 25 },
+    { id: 34, text: '🎰 JACKPOT: Total no-balls in the entire match?', category: 'JACKPOT 🎰', type: 'number', points: 30 },
+    { id: 35, text: '🎰 JACKPOT: Who will be NZ\'s top scorer?', category: 'JACKPOT 🎰', type: 'text', points: 35 },
+    { id: 36, text: '🎰 JACKPOT: Will India lose their last 5 wickets for under 30 runs?', category: 'JACKPOT 🎰', type: 'select', options: ['Yes', 'No'], points: 40 },
+    { id: 37, text: '🎰 JACKPOT: Exact over in which India\'s 5th wicket falls? (e.g. 14)', category: 'JACKPOT 🎰', type: 'number', points: 50 },
+    { id: 38, text: '🎰 JACKPOT: Will any bowler take a hat-trick in this match?', category: 'JACKPOT 🎰', type: 'select', options: ['Yes', 'No'], points: 50 },
 ];
