@@ -1,29 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-
-const SESSIONS_FILE = path.join(process.cwd(), 'data', 'sessions.json');
-
-function ensureFile() {
-    const dir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    if (!fs.existsSync(SESSIONS_FILE)) fs.writeFileSync(SESSIONS_FILE, JSON.stringify({}), 'utf-8');
-}
-
-function readSessions(): Record<string, string> {
-    ensureFile();
-    return JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf-8'));
-}
-
-function writeSessions(data: Record<string, string>) {
-    ensureFile();
-    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(data, null, 2), 'utf-8');
-}
+import { kv } from '@vercel/kv';
 
 // GET - return list of currently taken names
 export async function GET() {
-    const sessions = readSessions();
-    return NextResponse.json({ takenNames: Object.keys(sessions) });
+    const sessions = await kv.hgetall('active_sessions') as Record<string, string> | null;
+    return NextResponse.json({ takenNames: Object.keys(sessions || {}) });
 }
 
 // POST - claim a name (login)
@@ -32,15 +13,13 @@ export async function POST(req: NextRequest) {
         const { name } = await req.json();
         if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 
-        const sessions = readSessions();
-
-        if (sessions[name]) {
-            // Name already taken by someone else
+        // Atomic check-and-set: only set if field doesn't exist
+        const existing = await kv.hget('active_sessions', name);
+        if (existing) {
             return NextResponse.json({ error: 'Name already taken', taken: true }, { status: 409 });
         }
 
-        sessions[name] = new Date().toISOString();
-        writeSessions(sessions);
+        await kv.hset('active_sessions', { [name]: new Date().toISOString() });
         return NextResponse.json({ success: true });
     } catch {
         return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -53,9 +32,7 @@ export async function DELETE(req: NextRequest) {
         const { name } = await req.json();
         if (!name) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 
-        const sessions = readSessions();
-        delete sessions[name];
-        writeSessions(sessions);
+        await kv.hdel('active_sessions', name);
         return NextResponse.json({ success: true });
     } catch {
         return NextResponse.json({ error: 'Server error' }, { status: 500 });

@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
+import { kv } from '@vercel/kv';
 import { GUESTS } from '@/lib/constants';
 import { calculateScore, parseScorecardToResults } from '@/lib/scoring';
-import fs from 'fs';
-import path from 'path';
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'predictions.json');
-
-function readPredictions() {
-    if (!fs.existsSync(DATA_FILE)) return {};
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+async function readPredictions() {
+    const all = await kv.hgetall('predictions') as Record<string, string> | null;
+    const parsed: Record<string, any> = {};
+    for (const [key, val] of Object.entries(all || {})) {
+        try { parsed[key] = typeof val === 'string' ? JSON.parse(val) : val; } catch { parsed[key] = val; }
+    }
+    return parsed;
 }
 
 async function fetchScorecard() {
     const matchId = process.env.MATCH_ID;
     const apiKey = process.env.RAPIDAPI_KEY;
-
     if (!matchId || !apiKey) return null;
 
     const res = await fetch(
@@ -28,16 +28,14 @@ async function fetchScorecard() {
             cache: 'no-store',
         }
     );
-
     if (!res.ok) return null;
     return res.json();
 }
 
 export async function GET() {
     try {
-        const predictions = readPredictions();
+        const predictions = await readPredictions();
 
-        // Try to get live scorecard for real points calculation
         const scorecard = await fetchScorecard();
         const actualResults = scorecard ? parseScorecardToResults(scorecard) : null;
 
@@ -57,9 +55,7 @@ export async function GET() {
             return { name: guest, totalPoints: 0, answeredCount };
         });
 
-        // Sort by points descending
         leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
-
         return NextResponse.json({ leaderboard });
     } catch (err) {
         console.error('Leaderboard error:', err);

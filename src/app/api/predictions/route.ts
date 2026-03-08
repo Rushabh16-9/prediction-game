@@ -1,32 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { kv } from '@vercel/kv';
 import { Guest } from '@/lib/types';
-import fs from 'fs';
-import path from 'path';
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'predictions.json');
-
-// Ensure data directory and file exist
-function ensureDataFile() {
-    const dir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-    if (!fs.existsSync(DATA_FILE)) {
-        fs.writeFileSync(DATA_FILE, JSON.stringify({}), 'utf-8');
-    }
-}
-
-function readData(): Record<string, { answers: Record<number, string>; submittedAt: string }> {
-    ensureDataFile();
-    const content = fs.readFileSync(DATA_FILE, 'utf-8');
-    return JSON.parse(content);
-}
-
-function writeData(data: Record<string, any>) {
-    ensureDataFile();
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
-}
-
+// POST - save predictions
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
@@ -36,12 +12,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing guestName or answers' }, { status: 400 });
         }
 
-        const data = readData();
-        data[guestName] = {
-            answers,
-            submittedAt: new Date().toISOString(),
-        };
-        writeData(data);
+        await kv.hset('predictions', {
+            [guestName]: JSON.stringify({ answers, submittedAt: new Date().toISOString() }),
+        });
 
         return NextResponse.json({ success: true, message: 'Predictions saved!', totalPoints: null });
     } catch (err) {
@@ -50,12 +23,19 @@ export async function POST(req: NextRequest) {
     }
 }
 
+// GET - fetch predictions
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const name = searchParams.get('name');
-    const data = readData();
-    if (name) {
-        return NextResponse.json({ predictions: data[name] || null });
+
+    const all = await kv.hgetall('predictions') as Record<string, string> | null;
+    const parsed: Record<string, any> = {};
+    for (const [key, val] of Object.entries(all || {})) {
+        try { parsed[key] = typeof val === 'string' ? JSON.parse(val) : val; } catch { parsed[key] = val; }
     }
-    return NextResponse.json({ allPredictions: data });
+
+    if (name) {
+        return NextResponse.json({ predictions: parsed[name] || null });
+    }
+    return NextResponse.json({ allPredictions: parsed });
 }
