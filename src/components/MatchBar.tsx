@@ -91,15 +91,16 @@ export default function MatchBar({ onScoreUpdate }: MatchBarProps) {
                         playSoundEffect('wicket');
                     }
 
-                    // Check runs (Very simplified detection for 4 and 6)
+                    // Check runs: since we poll every 10s, multiple balls happen between checks.
+                    // Use a heuristic: if >=6 runs scored, a six likely happened; if 4-5, a four.
                     const prevRuns = prev.teams.batting.score;
                     const currRuns = curr.teams.batting.score;
                     const runDiff = currRuns - prevRuns;
 
-                    if (runDiff === 4) {
+                    if (runDiff >= 6) {
+                        playSoundEffect('six'); // triggers confetti too
+                    } else if (runDiff >= 4) {
                         playSoundEffect('four');
-                    } else if (runDiff === 6) {
-                        playSoundEffect('six');
                     }
                 }
 
