@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Guest, MatchScore } from "@/lib/types";
 import { QUESTIONS } from "@/lib/constants";
 import { CheckCircle, ChevronRight, Loader2, Lock } from "lucide-react";
@@ -58,6 +58,8 @@ export default function PredictionForm({ currentUser }: Props) {
     const [initialLoading, setInitialLoading] = useState(true);
     const [savedPoints, setSavedPoints] = useState<number | null>(null);
     const [indiaBattingFirst, setIndiaBattingFirst] = useState<boolean | null>(null);
+    const [draftSaved, setDraftSaved] = useState(false);
+    const draftToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         // Load any existing predictions for this user
@@ -89,6 +91,22 @@ export default function PredictionForm({ currentUser }: Props) {
         }
         fetchTossInfo();
     }, []);
+
+    // Auto-save draft answers to localStorage whenever answers change
+    useEffect(() => {
+        if (initialLoading || submitted) return; // Don't overwrite submitted state
+        const key = `predictions_${currentUser}`;
+        const existing = localStorage.getItem(key);
+        const parsed = existing ? JSON.parse(existing) : {};
+        // Only auto-save if not already submitted
+        if (!parsed.submitted) {
+            localStorage.setItem(key, JSON.stringify({ answers, submitted: false, totalPoints: null }));
+            // Show brief "Draft saved" toast
+            setDraftSaved(true);
+            if (draftToastRef.current) clearTimeout(draftToastRef.current);
+            draftToastRef.current = setTimeout(() => setDraftSaved(false), 1500);
+        }
+    }, [answers, currentUser, initialLoading, submitted]);
 
     const handleChange = (questionId: number, value: string) => {
         setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -188,10 +206,16 @@ export default function PredictionForm({ currentUser }: Props) {
             )}
 
             {/* Progress Bar */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-3">
                     <span className="text-sm font-semibold text-slate-600">Prediction Progress</span>
-                    <span className="text-sm font-bold text-blue-600">{answeredCount}/{totalQuestions} answered</span>
+                    <div className="flex items-center gap-2">
+                        {/* Draft saved indicator */}
+                        <span className={`text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full transition-opacity duration-500 ${draftSaved ? 'opacity-100' : 'opacity-0'}`}>
+                            ✓ Draft saved
+                        </span>
+                        <span className="text-sm font-bold text-blue-600">{answeredCount}/{totalQuestions} answered</span>
+                    </div>
                 </div>
                 <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
                     <div
