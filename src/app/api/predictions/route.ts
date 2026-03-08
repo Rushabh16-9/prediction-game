@@ -28,9 +28,19 @@ function readData(): Record<string, { answers: Record<number, string>; submitted
     }
 }
 
-function writeData(data: Record<string, any>) {
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+async function writeData(data: Record<string, any>, retries = 3) {
     ensureDataFile();
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    for (let i = 0; i < retries; i++) {
+        try {
+            fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+            return;
+        } catch (err) {
+            if (i === retries - 1) throw err;
+            await delay(100);
+        }
+    }
 }
 
 export async function POST(req: NextRequest) {
@@ -47,7 +57,7 @@ export async function POST(req: NextRequest) {
             answers,
             submittedAt: new Date().toISOString(),
         };
-        writeData(data);
+        await writeData(data);
 
         return NextResponse.json({ success: true, message: 'Predictions saved!', totalPoints: null });
     } catch (err) {

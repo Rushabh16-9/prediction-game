@@ -64,6 +64,7 @@ export default function PredictionForm({ currentUser }: Props) {
     const [savedPoints, setSavedPoints] = useState<number | null>(null);
     const [indiaBattingFirst, setIndiaBattingFirst] = useState<boolean | null>(null);
     const [draftSaved, setDraftSaved] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const draftToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
@@ -119,6 +120,7 @@ export default function PredictionForm({ currentUser }: Props) {
 
     const handleSubmit = async () => {
         setLoading(true);
+        setSubmitError(null);
         try {
             const res = await fetch('/api/predictions', {
                 method: 'POST',
@@ -126,14 +128,19 @@ export default function PredictionForm({ currentUser }: Props) {
                 body: JSON.stringify({ guestName: currentUser, answers }),
             });
             const data = await res.json();
-            if (res.ok) {
-                const key = `predictions_${currentUser}`;
-                localStorage.setItem(key, JSON.stringify({ answers, submitted: true, totalPoints: data.totalPoints ?? null }));
-                setSubmitted(true);
-                setSavedPoints(data.totalPoints ?? null);
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to submit predictions');
             }
-        } catch (err) {
+
+            const key = `predictions_${currentUser}`;
+            localStorage.setItem(key, JSON.stringify({ answers, submitted: true, totalPoints: data.totalPoints ?? null }));
+            setSubmitted(true);
+            setSavedPoints(data.totalPoints ?? null);
+
+        } catch (err: any) {
             console.error(err);
+            setSubmitError(err.message || 'Something went wrong while submitting.');
         } finally {
             setLoading(false);
         }
@@ -307,8 +314,13 @@ export default function PredictionForm({ currentUser }: Props) {
                 );
             })}
 
-            {/* Submit Button */}
-            <div className="sticky bottom-0 bg-slate-50/80 backdrop-blur-sm pt-3 pb-6 flex justify-center">
+            {/* Submit Button & Error */}
+            <div className="sticky bottom-0 bg-slate-50/80 backdrop-blur-sm pt-3 pb-6 flex flex-col items-center gap-3">
+                {submitError && (
+                    <div className="text-red-500 bg-red-50 text-sm font-semibold px-4 py-2 rounded-lg border border-red-200">
+                        Error: {submitError}
+                    </div>
+                )}
                 <button
                     onClick={handleSubmit}
                     disabled={loading || answeredCount < totalQuestions}
