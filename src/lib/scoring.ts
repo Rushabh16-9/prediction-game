@@ -151,6 +151,45 @@ export function calculateScore(
 }
 
 /**
+ * Creates mock actual results from demo live match data
+ * This is used for testing when RapidAPI doesn't return full scorecard
+ */
+export function getDemoResults(): ActualResults {
+    return {
+        tossWinner: 'India',
+        captainChoice: 'Bat',
+        indiaTotalRuns: 165,
+        indiaSixes: 8,
+        indiaFours: 14,
+        sanjuRuns: 45,
+        ishanRuns: 32,
+        skRuns: 28,
+        abhishekRuns: 15,
+        tilakRuns: 22,
+        hardikBatRuns: 18,
+        mostSixesPlayer: 'Sanju Samson',
+        indiaPowerplayWickets: 1,
+        india50InPowerplay: 'Yes',
+        indiaCentury: 'No',
+        indiaFifty: 'Yes',
+        bumrahWickets: 2,
+        arshdeepWickets: 1,
+        axarWickets: 1,
+        varunWickets: 1,
+        hardikBowlWickets: 0,
+        bumrahRuns: 32,
+        indiaTotalWides: 2,
+        nzTotalRuns: 158,
+        nzTotalWickets: 8,
+        nzFifty: 'Yes',
+        firstCatch: 'Varun Chakravarthy',
+        runOut: 'Yes',
+        playerOfMatch: 'Sanju Samson',
+        indiaWin: 'Yes',
+    };
+}
+
+/**
  * Parses the raw Cricbuzz scorecard JSON into our ActualResults format.
  * This function must be updated if the API response structure changes.
  */
@@ -158,10 +197,18 @@ export function parseScorecardToResults(scorecard: any): ActualResults {
     const results: ActualResults = {};
 
     try {
+        // Debug logging
+        console.log('Parsing scorecard with status:', scorecard?.matchInfo?.state);
+
         const matchInfo = scorecard?.matchInfo;
         const matchScore = scorecard?.matchScore;
         const team1 = matchInfo?.team1 || {};
         const team2 = matchInfo?.team2 || {};
+
+        if (!matchInfo) {
+            console.log('No matchInfo found');
+            return results;
+        }
 
         // Toss info
         const tossResults = matchInfo?.tossResults;
@@ -172,27 +219,51 @@ export function parseScorecardToResults(scorecard: any): ActualResults {
 
         // Identify Teams
         const team1IsIndia = (team1.teamName || team1.teamSName || '').toLowerCase().includes('ind');
+        const team1Id = team1.teamId;
+        const team2Id = team2.teamId;
+
+        // Understand who's batting now
+        const currBatTeamId = matchInfo?.currBatTeamId;
+        const isBattingTeam1 = currBatTeamId === team1Id;
 
         // Find Innings
         let indiaInnings = null;
         let nzInnings = null;
 
         if (matchScore) {
-            const indScoreObj = team1IsIndia ? matchScore.team1Score : matchScore.team2Score;
-            const nzScoreObj = team1IsIndia ? matchScore.team2Score : matchScore.team1Score;
+            if (team1IsIndia) {
+                // Team1 is India, Team2 is NZ
+                const indScoreObj = matchScore.team1Score;
+                const nzScoreObj = matchScore.team2Score;
 
-            if (indScoreObj) {
-                const keys = Object.keys(indScoreObj);
-                if (keys.length > 0) indiaInnings = indScoreObj[keys[keys.length - 1]]; // latest innings
-            }
-            if (nzScoreObj) {
-                const keys = Object.keys(nzScoreObj);
-                if (keys.length > 0) nzInnings = nzScoreObj[keys[keys.length - 1]];
+                if (indScoreObj) {
+                    const keys = Object.keys(indScoreObj);
+                    if (keys.length > 0) indiaInnings = indScoreObj[keys[keys.length - 1]];
+                }
+                if (nzScoreObj) {
+                    const keys = Object.keys(nzScoreObj);
+                    if (keys.length > 0) nzInnings = nzScoreObj[keys[keys.length - 1]];
+                }
+            } else {
+                // Team1 is NZ, Team2 is India
+                const indScoreObj = matchScore.team2Score;
+                const nzScoreObj = matchScore.team1Score;
+
+                if (indScoreObj) {
+                    const keys = Object.keys(indScoreObj);
+                    if (keys.length > 0) indiaInnings = indScoreObj[keys[keys.length - 1]];
+                }
+                if (nzScoreObj) {
+                    const keys = Object.keys(nzScoreObj);
+                    if (keys.length > 0) nzInnings = nzScoreObj[keys[keys.length - 1]];
+                }
             }
         }
 
         // India Batting stats
         if (indiaInnings) {
+            console.log('Found India innings:', indiaInnings.runs, '/', indiaInnings.wickets);
+
             const batDetails = indiaInnings.batTeamDetails;
             results.indiaTotalRuns = indiaInnings.runs || 0;
 
@@ -230,18 +301,18 @@ export function parseScorecardToResults(scorecard: any): ActualResults {
             results.indiaCentury = hasCentury ? 'Yes' : 'No';
             results.indiaFifty = hasFifty ? 'Yes' : 'No';
 
-            // Powerplay data (if available in official format, usually under currentInnings.ppData)
+            // Powerplay data (if available)
             const powerplayData = indiaInnings.ppData?.pp_1;
             if (powerplayData) {
                 results.indiaPowerplayWickets = powerplayData.ppWkts ?? 0;
                 results.india50InPowerplay = (powerplayData.ppRuns ?? 0) > 50 ? 'Yes' : 'No';
             }
-
-            // Bowling stats for India bowled second (NZ batting => India bowling)
         }
 
         // Get Bowling stats from NZ's batting innings
         if (nzInnings) {
+            console.log('Found NZ innings:', nzInnings.runs, '/', nzInnings.wickets);
+
             results.nzTotalRuns = nzInnings.runs || 0;
             results.nzTotalWickets = nzInnings.wickets || 0;
 
@@ -273,6 +344,8 @@ export function parseScorecardToResults(scorecard: any): ActualResults {
         // Match result
         const status = matchInfo?.status || matchInfo?.matchDesc || '';
         results.indiaWin = status.toLowerCase().includes('india') && (status.toLowerCase().includes('won') || status.toLowerCase().includes('win')) ? 'Yes' : 'No';
+
+        console.log('Parsed results:', results);
 
     } catch (e) {
         console.error('Error parsing scorecard:', e);

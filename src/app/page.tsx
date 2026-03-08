@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Guest, MatchScore } from "@/lib/types";
 import UserSelection from "@/components/UserSelection";
 import MatchBar from "@/components/MatchBar";
-import Scorecard from "@/components/Scorecard";
 import PredictionForm from "@/components/PredictionForm";
 import Leaderboard from "@/components/Leaderboard";
 import { Trophy, CheckSquare } from "lucide-react";
@@ -63,9 +62,6 @@ export default function Home() {
       {/* Sticky Match Bar */}
       <MatchBar onScoreUpdate={setScore} />
 
-      {/* Detailed Scorecard */}
-      <Scorecard score={score} />
-
       <main className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 pt-5 sm:pt-8">
 
         {/* Header / User Info */}
@@ -115,7 +111,7 @@ export default function Home() {
           {activeTab === 'predict' ? (
             <PredictionForm currentUser={currentUser} />
           ) : (
-            <Leaderboard currentUser={currentUser} />
+            <Leaderboard currentUser={currentUser} score={score} />
           )}
         </div>
 

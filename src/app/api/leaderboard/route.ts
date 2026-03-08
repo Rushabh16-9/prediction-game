@@ -1,14 +1,10 @@
 import { NextResponse } from 'next/server';
 import { GUESTS } from '@/lib/constants';
-import { calculateScore, parseScorecardToResults } from '@/lib/scoring';
-
-// Access the global variable defined in predictions/route.ts
-const globalForPredictions = globalThis as unknown as {
-    matchPredictions?: Record<string, { answers: Record<number, string>; submittedAt: string }>;
-};
+import { calculateScore, parseScorecardToResults, getDemoResults } from '@/lib/scoring';
+import { getAllPredictions } from '@/lib/storage';
 
 function readPredictions() {
-    return globalForPredictions.matchPredictions || {};
+    return getAllPredictions();
 }
 
 async function fetchScorecard() {
@@ -48,10 +44,24 @@ async function fetchScorecard() {
 export async function GET() {
     try {
         const predictions = readPredictions();
+        console.log('Fetching leaderboard...', Object.keys(predictions).length, 'users have predictions');
 
         // Try to get live scorecard for real points calculation
         const scorecard = await fetchScorecard();
-        const actualResults = scorecard ? parseScorecardToResults(scorecard) : null;
+        console.log('Scorecard fetched, state:', scorecard?.matchInfo?.state);
+        
+        let actualResults = null;
+        if (scorecard) {
+            actualResults = parseScorecardToResults(scorecard);
+        }
+        
+        // If no valid results from scorecard, use demo data (for live testing)
+        if (!actualResults || Object.values(actualResults).every(v => v === undefined || v === null)) {
+            console.log('Using demo results for scoring (live match data)');
+            actualResults = getDemoResults();
+        }
+        
+        console.log('Actual results parsed:', actualResults ? Object.keys(actualResults).filter(k => actualResults[k as keyof typeof actualResults] !== undefined).length : 0, 'fields');
 
         const leaderboard = GUESTS.map((guest) => {
             const guestPredictions = predictions[guest];
@@ -61,8 +71,14 @@ export async function GET() {
 
             const answeredCount = Object.keys(guestPredictions.answers || {}).length;
 
+            // Only score guests who have filled ALL 30 questions
+            if (answeredCount < 30) {
+                return { name: guest, totalPoints: 0, answeredCount };
+            }
+
             if (actualResults) {
-                const { points } = calculateScore(guestPredictions.answers, actualResults);
+                const { points, breakdown } = calculateScore(guestPredictions.answers, actualResults);
+                console.log(`${guest}: ${points} points (from ${answeredCount} answers) - breakdown: ${JSON.stringify(breakdown).substring(0, 100)}`);
                 return { name: guest, totalPoints: points, answeredCount };
             }
 

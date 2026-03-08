@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Guest } from "@/lib/types";
+import { Guest, MatchScore } from "@/lib/types";
 import { GUESTS } from "@/lib/constants";
 import { Trophy, Medal, RefreshCw, User } from "lucide-react";
 import clsx from "clsx";
@@ -14,15 +14,19 @@ interface LeaderboardEntry {
 
 interface Props {
     currentUser: Guest;
+    score?: MatchScore | null;
 }
 
 const MEDAL_COLORS = ['text-yellow-400', 'text-slate-400', 'text-amber-600'];
 const MEDAL_BG = ['bg-yellow-50 border-yellow-200', 'bg-slate-50 border-slate-200', 'bg-amber-50 border-amber-200'];
 
-export default function Leaderboard({ currentUser }: Props) {
+export default function Leaderboard({ currentUser, score }: Props) {
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [inning1Fetched, setInning1Fetched] = useState(false);
+    const [inning2Fetched, setInning2Fetched] = useState(false);
+    const [prevBattingOvers, setPrevBattingOvers] = useState(0);
 
     const fetchLeaderboard = async () => {
         setLoading(true);
@@ -32,6 +36,7 @@ export default function Leaderboard({ currentUser }: Props) {
             if (data.leaderboard) {
                 setEntries(data.leaderboard);
                 setLastUpdated(new Date());
+                console.log('[Leaderboard] Results fetched');
             }
         } catch (err) {
             console.error("Failed to fetch leaderboard:", err);
@@ -40,11 +45,36 @@ export default function Leaderboard({ currentUser }: Props) {
         }
     };
 
+    // Initial load - fetch leaderboard once on mount
     useEffect(() => {
         fetchLeaderboard();
-        const interval = setInterval(fetchLeaderboard, 30000); // Refresh every 30s
-        return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        if (!score) return;
+
+        const battingOvers = score.teams.batting.overs || 0;
+        const isLive = score.status === 'Live';
+
+        // Detect Inning 1 end: When overs >= 20
+        if (isLive && battingOvers >= 19.5 && !inning1Fetched) {
+            console.log(`[Leaderboard] Inning 1 completed (overs: ${battingOvers}), fetching results...`);
+            fetchLeaderboard();
+            setInning1Fetched(true);
+            setPrevBattingOvers(battingOvers);
+        }
+        // Detect Inning 2: When overs drop back to low value (team switch)
+        else if (isLive && inning1Fetched && !inning2Fetched && battingOvers < 5 && prevBattingOvers >= 19.5) {
+            console.log(`[Leaderboard] Inning 2 started (overs: ${battingOvers})`);
+            setPrevBattingOvers(battingOvers);
+        }
+        // Detect Inning 2 end: When second innings overs >= 20
+        else if (isLive && inning1Fetched && !inning2Fetched && battingOvers >= 19.5 && prevBattingOvers < 19.5 && prevBattingOvers > 5) {
+            console.log(`[Leaderboard] Inning 2 completed (overs: ${battingOvers}), fetching final results...`);
+            fetchLeaderboard();
+            setInning2Fetched(true);
+        }
+    }, [score, inning1Fetched, inning2Fetched, prevBattingOvers]);
 
     const maxPoints = entries.length > 0 ? Math.max(...entries.map(e => e.totalPoints)) : 1;
 

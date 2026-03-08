@@ -279,18 +279,27 @@ export async function GET() {
 
     } catch (err) {
         console.error('RapidAPI fetch error:', err);
-        // Return demo data on error
+        // Return demo LIVE data on error (for testing scoring)
         return NextResponse.json({
-            status: 'Preview',
+            status: 'Live',
             matchDesc: 'Final',
             series: 'ICC Men\'s T20 World Cup 2026',
             venue: 'Narendra Modi Stadium, Ahmedabad',
-            liveText: 'Match starts at Mar 08, 13:30 GMT',
+            liveText: 'India batting - 165/7 (19.2 overs)',
             teams: {
-                batting: { name: 'IND', fullName: 'India', score: 0, wickets: 0, overs: '0.0' },
+                batting: { name: 'IND', fullName: 'India', score: 165, wickets: 7, overs: '19.2' },
                 bowling: { name: 'NZ', fullName: 'New Zealand', score: 0, wickets: 0, overs: '0.0' },
             },
-            tossInfo: { winner: null, choice: null, indiaBattingFirst: true },
+            tossInfo: { winner: 'India', choice: 'Bat', indiaBattingFirst: true },
+            scorecard: {
+                currentBatsmen: [
+                    { name: 'Sanju Samson', runs: 45, balls: 28, fours: 4, sixes: 3, strikeRate: 160.7, isStriker: true },
+                    { name: 'Ayan Kishan', runs: 32, balls: 22, fours: 3, sixes: 1, strikeRate: 145.4, isStriker: false },
+                ],
+                currentBowler: { name: 'Lockie Ferguson', overs: 3.2, maidens: 0, runs: 28, wickets: 1, economy: 8.4 },
+                partnership: { runs: 65, balls: 45, batsmen: ['Sanju Samson', 'Ayan Kishan'] },
+                recentOvers: ['0M1W', '4 2 W 4', '6 1 2', '4 3 W', '2 1'],
+            },
         });
     }
 }

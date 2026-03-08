@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Guest } from '@/lib/types';
-
-// Use a global variable to persist predictions in development and across API hot-reloads
-const globalForPredictions = globalThis as unknown as {
-    matchPredictions: Record<string, { answers: Record<number, string>; submittedAt: string }>;
-};
-
-if (!globalForPredictions.matchPredictions) {
-    globalForPredictions.matchPredictions = {};
-}
+import { getAllPredictions, saveGuestPredictions, getGuestPredictions } from '@/lib/storage';
 
 export async function POST(req: NextRequest) {
     try {
@@ -19,10 +11,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing guestName or answers' }, { status: 400 });
         }
 
-        globalForPredictions.matchPredictions[guestName] = {
-            answers,
-            submittedAt: new Date().toISOString(),
-        };
+        saveGuestPredictions(guestName, answers);
 
         return NextResponse.json({ success: true, message: 'Predictions saved!', totalPoints: null });
     } catch (err) {
@@ -34,9 +23,12 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const name = searchParams.get('name');
-    const data = globalForPredictions.matchPredictions;
+    
     if (name) {
-        return NextResponse.json({ predictions: data[name] || null });
+        const predictions = getGuestPredictions(name);
+        return NextResponse.json({ predictions: predictions || null });
     }
-    return NextResponse.json({ allPredictions: data });
+    
+    const allData = getAllPredictions();
+    return NextResponse.json({ allPredictions: allData });
 }
